@@ -1,0 +1,7 @@
+services:
+  discord:
+    build: .
+    container_name: imabot
+    image: imabot
+    environment:
+      DISCORD_TOKEN: '<DISCORD_TOKEN>'
