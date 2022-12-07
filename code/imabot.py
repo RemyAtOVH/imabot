@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf8 -*-
 
+"""Module to build Discord interactions (from pip:py-cord)."""
 import discord
+import ovh
 
 from loguru import logger
-
-# Log Internal imports
-logger.info('Imports OK')
 
 from variables import (
     DISCORD_GUILD,
     DISCORD_TOKEN,
+    OVH_AK,
+    OVH_AS,
+    OVH_CK,
+    OVH_ENDPOINT,
 )
 
 # Log Internal imports
-logger.info('Internal ENV vars loading OK')
+logger.info('Internal loading OK')
 
 try:
     if DISCORD_GUILD:
@@ -26,6 +29,19 @@ except Exception as e:
 else:
     logger.info('Discord connection OK')
 
+try:
+    ovhClient = ovh.Client(
+        endpoint=OVH_ENDPOINT,
+        application_key=OVH_AK,
+        application_secret=OVH_AS,
+        consumer_key=OVH_CK,
+        )
+    me = ovhClient.get('/me')
+except Exception as e:
+    logger.error(f'OVHcloud API connection KO [{e}]')
+else:
+    if me['nichandle']:
+        logger.info(f"OVHcloud API connection OK ({me['nichandle']})")
 
 @bot.event
 async def on_ready():
