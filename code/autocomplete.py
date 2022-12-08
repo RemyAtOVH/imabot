@@ -40,4 +40,5 @@ async def get_project_list(ctx: discord.AutocompleteContext):
                     value=project_id,
                     )
                 )
+
         return project_list

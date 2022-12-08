@@ -102,12 +102,12 @@ async def project(
     projectid: str,
 ):
     """
-    This part allors the user to perform actions on Public Cloud projects
+    This part performs actions on Public Cloud (OpenStack) projects
     So far:
     - list: Display the list of ALL Public Cloud projects
     - show: When provided a Project ID, will show its details
     """
-    # As the API takes is so dams slow, we need more time to answer
+    # As we rely on potentially a lot of API calls, we need time to answer
     await ctx.defer()
     # Pre-flight checks
     if ctx.channel.type is discord.ChannelType.private:
@@ -152,9 +152,9 @@ async def project(
 
                 embed = discord.Embed(
                     description=(
-                        "```",
-                        tabulate(projects_table, headers='keys', tablefmt='pretty'),
-                        "```"
+                        '```' +
+                        tabulate(projects_table, headers='keys', tablefmt='pretty') +
+                        '```'
                         ),
                     colour=discord.Colour.green()
                 )
