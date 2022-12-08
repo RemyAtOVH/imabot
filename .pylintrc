@@ -1,2 +1,3 @@
 [MESSAGES CONTROL]
-disable=broad-except
+disable=broad-except,redefined-outer-name
+good-names=i,e
