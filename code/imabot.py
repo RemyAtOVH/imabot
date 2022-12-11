@@ -148,14 +148,6 @@ async def project(
     logger.info(f'[#{channel}][{name}] /ovh project {projectid}')
 
     if action == 'list':
-        # We start with the headers
-        projects_table = {
-            'Nichandle': [],
-            'Project ID': [],
-            'Project Name': [],
-            'Status': [],
-        }
-
         try:
             myprojects = ovh_client.get('/cloud/project')
         except Exception as e:
@@ -170,24 +162,48 @@ async def project(
 
         # We loop over the projects
         try:
+            embed = discord.Embed(
+                title=f'**{my_nic}**',
+                colour=discord.Colour.green()
+                )
+
             for project_id in myprojects:
-                # We increment results counter
-                myproject = ovh_client.get(f'/cloud/project/{project_id}')
+                # We start with the headers
+                embed_field_value_table = {
+                    'Project Name': [],
+                    'Project Status': [],
+                }
+
+                project = ovh_client.get(f'/cloud/project/{project_id}')
+
+                if project['status'] == 'suspended':
+                    # Suspended Projects cannot be queried later
+                    embed.add_field(
+                        name=f'Project ID: **{project_id}**',
+                        value='(Suspended)',
+                        inline=False,
+                        )
+                    continue
 
                 # Everything went well
-                projects_table['Nichandle'].append(my_nic)
-                projects_table['Project ID'].append(f'{project_id:.10}..')
-                projects_table['Project Name'].append(f"{myproject['description']:>22}")
-                projects_table['Status'].append(myproject['status'])
+                embed_field_value_table['Project Name'].append(project['description'])
+                embed_field_value_table['Project Status'].append(project['status'])
 
-                embed = discord.Embed(
-                    description=(
+                embed.add_field(
+                    name=f'Project ID: **{project_id}**',
+                    value=(
                         '```' +
-                        tabulate(projects_table, headers='keys', tablefmt='pretty') +
+                        tabulate(
+                            embed_field_value_table,
+                            headers='keys',
+                            tablefmt='pretty',
+                            stralign='right',
+                            ) +
                         '```'
                         ),
-                    colour=discord.Colour.green()
+                    inline=False,
                 )
+
                 await ctx.interaction.edit_original_response(
                     embed=embed
                     )
