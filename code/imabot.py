@@ -34,6 +34,22 @@ from autocomplete import (
 logger.info('Internal loading OK')
 
 try:
+    ovh_client = ovh.Client(
+        endpoint=OVH_ENDPOINT,
+        application_key=OVH_AK,
+        application_secret=OVH_AS,
+        consumer_key=OVH_CK,
+        )
+    me = ovh_client.get('/me')
+    if me['nichandle']:
+        my_nic = me['nichandle']
+
+except Exception as e:
+    logger.error(f'OVHcloud API connection KO [{e}]')
+else:
+    logger.info(f"OVHcloud API connection OK ({my_nic})")
+
+try:
     if DISCORD_GUILD:
         bot = discord.Bot(debug_guilds=[DISCORD_GUILD])
     else:
@@ -42,23 +58,6 @@ except Exception as e:
     logger.error(f'Discord connection KO [{e}]')
 else:
     logger.info('Discord connection OK')
-
-try:
-    ovh_client = ovh.Client(
-        endpoint=OVH_ENDPOINT,
-        application_key=OVH_AK,
-        application_secret=OVH_AS,
-        consumer_key=OVH_CK,
-        )
-    me = ovh_client.get('/me')
-    logger.error(me)
-    if me['nichandle']:
-        my_nic = me['nichandle']
-
-except Exception as e:
-    logger.error(f'OVHcloud API connection KO [{e}]')
-else:
-    logger.info(f"OVHcloud API connection OK ({my_nic})")
 
 @bot.event
 async def on_ready():
@@ -140,7 +139,7 @@ async def project(
     """
     # As we rely on potentially a lot of API calls, we need time to answer
     await ctx.defer()
-    # Pre-flight checks
+    # Pre-flight checks: Channel
     if ctx.channel.type is discord.ChannelType.private:
         channel = ctx.channel.type
     else:
@@ -286,7 +285,7 @@ async def user(
     """
     # As we rely on potentially a lot of API calls, we need time to answer
     await ctx.defer()
-    # Pre-flight checks
+    # Pre-flight checks: Channel
     if ctx.channel.type is discord.ChannelType.private:
         channel = ctx.channel.type
     else:
@@ -298,12 +297,6 @@ async def user(
         )
 
     if action == 'list':
-        # We start with the headers
-        embed_field_value_table = {
-            'User Name': [],
-            'User Desc.': [],
-        }
-
         try:
             projects = ovh_client.get('/cloud/project')
         except Exception as e:
@@ -318,13 +311,18 @@ async def user(
 
         # We loop over the projects
         try:
-
             embed = discord.Embed(
                 title=f'**{my_nic}**',
                 colour=discord.Colour.green()
                 )
 
             for project_id in projects:
+                # We start with the headers
+                embed_field_value_table = {
+                    'User Name': [],
+                    'User Desc.': [],
+                    }
+
                 project = ovh_client.get(f'/cloud/project/{project_id}')
 
                 if project['status'] == 'suspended':
