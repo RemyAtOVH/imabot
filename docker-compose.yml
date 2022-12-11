@@ -10,3 +10,5 @@ services:
       OVH_CONSUMER_KEY: '<OVH_CONSUMER_KEY>'
       PYTHONIOENCODING: 'UTF-8'
       PYTHONUNBUFFERED: 'True'
+      DISCORD_ROLE_TECH_RO: 'Tech'
+      DISCORD_ROLE_TECH_RW: 'Tech Lead'

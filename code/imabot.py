@@ -10,6 +10,7 @@ import tabulate
 import ovh
 
 from discord.commands import option
+from discord.ext import commands
 from loguru import logger
 from tabulate import tabulate
 
@@ -20,6 +21,8 @@ from variables import (
     OVH_AS,
     OVH_CK,
     OVH_ENDPOINT,
+    ROLE_TECH_RO,
+    ROLE_TECH_RW,
 )
 
 from autocomplete import (
@@ -62,6 +65,32 @@ async def on_ready():
     """Logs when bot connection to Discord is established."""
     logger.info(f'Discord on_ready OK ({bot.user})')
 
+# Additionnal error detector to answer properly
+@bot.event
+async def on_application_command_error(ctx, error):
+    """Inform user of errors."""
+    if isinstance(error, discord.ext.commands.NoPrivateMessage):
+        await ctx.respond(
+            "Sorry, this can't be done in DMs.",
+            ephemeral=True
+            )
+    elif isinstance(error, discord.ext.commands.MissingPermissions):
+        await ctx.respond(
+            "Sorry, you don't have permission to do this.",
+            ephemeral=True
+            )
+    elif isinstance(error, discord.ext.commands.CommandNotFound):
+        await ctx.respond(
+            "Sorry, unable to find the proper interaction.",
+            ephemeral=True
+            )
+    elif isinstance(error, discord.ext.commands.MissingAnyRole):
+        await ctx.respond(
+            "Sorry, you are missing at least one of the required roles.",
+            ephemeral=True
+            )
+    else:
+        raise error
 
 #
 # /ovh Slash Commands
@@ -81,6 +110,7 @@ else:
     default_permission=False,
     name='project',
     )
+@commands.has_any_role(ROLE_TECH_RO)
 @option(
     "action",
     description="Project action",
@@ -217,6 +247,7 @@ async def project(
     default_permission=False,
     name='user',
     )
+@commands.has_any_role(ROLE_TECH_RO)
 @option(
     "action",
     description="Users action",
@@ -392,6 +423,23 @@ async def user(
         logger.debug(f'[#{channel}][{name}] └──> Queries OK')
         return
     elif action == 'delete':
+        # Here for this one, we need more elevated role - TECH_RW
+        # Pre-flight checks : Roles
+        role_rw = discord.utils.get(ctx.author.guild.roles, name=ROLE_TECH_RW)
+        if role_rw not in ctx.author.roles:
+            msg = (
+                f'[#{channel}][{name}]  └──> Missing required role (@{ROLE_TECH_RW})'
+                )
+            logger.warning(msg)
+            embed = discord.Embed(
+                description=(
+                    f"You don't have the role requested for this operation (@{ROLE_TECH_RW})"
+                    ),
+                colour=discord.Colour.orange()
+            )
+            await ctx.respond(embed=embed)
+            return
+
         if projectid is None or userid is None:
             logger.error('Missing mandatory option(s)')
             msg = (
