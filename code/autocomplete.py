@@ -73,3 +73,36 @@ async def get_user_list(ctx: discord.AutocompleteContext):
                 )
 
         return user_list
+
+async def get_voucher_list(ctx: discord.AutocompleteContext):
+    """Function to build and serve an Autocomplete list of Vouchers."""
+    try:
+        ovh_client = ovh.Client(
+            endpoint=OVH_ENDPOINT,
+            application_key=OVH_AK,
+            application_secret=OVH_AS,
+            consumer_key=OVH_CK,
+            )
+        credits_id = ovh_client.get(
+            f'/cloud/project/{ctx.options["projectid"]}/credit'
+            )
+    except Exception as e:
+        logger.error(f'Autocomplete generation KO [{e}]')
+        return []
+    else:
+        if credits is None or len(credits) == 0:
+            return []
+        else:
+            voucher_list = []
+            for credit_id in credits_id:
+                credit = ovh_client.get(
+                    f'/cloud/project/{ctx.options["projectid"]}'
+                    f'/credit/{credit_id}'
+                    )
+                voucher_list.append(
+                    discord.OptionChoice(
+                        f"{credit['id']} ({credit['voucher']})",
+                        value=f"{credit['id']}",
+                        )
+                    )
+            return voucher_list

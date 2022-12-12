@@ -10,6 +10,8 @@ DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
 # Discord Roles
 ROLE_TECH_RO = os.environ.get("DISCORD_ROLE_TECH_RO", "Tech")
 ROLE_TECH_RW = os.environ.get("DISCORD_ROLE_TECH_RW", "Tech Lead")
+ROLE_ACCOUNTING = os.environ.get("DISCORD_ROLE_ACCOUNTING", "Accounting")
+
 # OVHcloud API credentials
 """
 You can generate them here: https://api.ovh.com/createToken/

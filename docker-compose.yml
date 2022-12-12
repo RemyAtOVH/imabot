@@ -12,3 +12,4 @@ services:
       PYTHONUNBUFFERED: 'True'
       DISCORD_ROLE_TECH_RO: 'Tech'
       DISCORD_ROLE_TECH_RW: 'Tech Lead'
+      DISCORD_ROLE_ACCOUNTING: 'Accounting'
