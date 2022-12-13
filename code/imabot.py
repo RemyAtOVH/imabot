@@ -4,10 +4,10 @@
 """🤖 Module to build Discord interactions and automate IT actions 🤖."""
 
 import json
+import textwrap
 
 import discord
 import tabulate
-import textwrap
 import ovh
 
 from discord.commands import option
@@ -641,6 +641,102 @@ async def voucher(
             return
     elif action == 'show':
         pass
+
+@group_singouin.command(
+    description='/ovh Commands related to Project Billing',
+    default_permission=False,
+    name='billing',
+    )
+@commands.has_any_role(ROLE_ACCOUNTING)
+async def billing(
+    ctx,
+):
+    """This part performs actions on Public Cloud billing."""
+    # As we rely on potentially a lot of API calls, we need time to answer
+    await ctx.defer()
+    # Pre-flight checks
+    if ctx.channel.type is discord.ChannelType.private:
+        channel = ctx.channel.type
+    else:
+        channel = ctx.channel.name
+    name = ctx.author.name
+    logger.info(f'[#{channel}][{name}] /ovh billing')
+
+    try:
+        embed = discord.Embed(
+            title=f'**{my_nic}**',
+            colour=discord.Colour.green()
+            )
+
+        debts_id = ovh_client.get('/me/debtAccount/debt')
+        if len(debts_id) == 0:
+            # There is no Debt at all on the NIC
+            embed.add_field(
+                name='',
+                value='No Debt/Current billing',
+                inline=False,
+                )
+
+        for debt_id in debts_id:
+            # We start with the headers
+            embed_field_value_table = {
+                'Type': [],
+                'Description': [],
+                'Price': [],
+                }
+
+            # We locate the debt to have the initial orderId
+            debt = ovh_client.get(
+                f'/me/debtAccount/debt/{debt_id}'
+                )
+            order_id = debt['orderId']
+            # With the orderId, we grab the orderDetailIds
+            detailed_orders_id = ovh_client.get(
+                f'/me/order/{order_id}/details'
+                )
+
+            for detailed_order_id in detailed_orders_id:
+                # We loop over the detailed orders to grab the infos
+                detailed_order = ovh_client.get(
+                f'/me/order/{order_id}/details/{detailed_order_id}'
+                )
+                project_id = detailed_order['domain']
+                desc = textwrap.shorten(detailed_order['description'], width=27, placeholder="...")
+                embed_field_value_table['Type'].append(detailed_order['detailType'])
+                embed_field_value_table['Price'].append(detailed_order['totalPrice']['text'])
+                embed_field_value_table['Description'].append(desc)
+
+            embed.add_field(
+                name=f'Project ID: **{project_id}**\nOrder ID: **{order_id}**',
+                value=(
+                    '```' +
+                    tabulate(
+                        embed_field_value_table,
+                        headers='keys',
+                        tablefmt='pretty',
+                        stralign='right',
+                        ) +
+                    '```'
+                    ),
+                inline=False,
+                )
+
+            await ctx.interaction.edit_original_response(
+                embed=embed
+                )
+    except Exception as e:
+        msg = f'API calls KO [{e}]'
+        logger.error(msg)
+        embed = discord.Embed(
+            description=msg,
+            colour=discord.Colour.red()
+        )
+        await ctx.respond(embed=embed)
+        return
+    else:
+        logger.debug(f'[#{channel}][{name}] └──> Queries OK')
+        return
+
 
 #
 # Run Discord bot
