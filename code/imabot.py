@@ -18,6 +18,7 @@ from tabulate import tabulate
 from variables import (
     DISCORD_GUILD,
     DISCORD_TOKEN,
+    DISCORD_GROUP_GLOBAL,
     OVH_AK,
     OVH_AS,
     OVH_CK,
@@ -98,16 +99,16 @@ async def on_application_command_error(ctx, error):
 # /ovh Slash Commands
 #
 try:
-    group_singouin = bot.create_group(
-        description="Commands related to OVHcloud",
-        name='ovh',
+    group_global = bot.create_group(
+        description="Commands related to OVHcloud requests",
+        name=DISCORD_GROUP_GLOBAL,
         )
 except Exception as e:
-    logger.error(f'Group KO (/ovh) [{e}]')
+    logger.error(f'Group KO (/{DISCORD_GROUP_GLOBAL}) [{e}]')
 else:
-    logger.debug('Group OK (/ovh)')
+    logger.debug(f'Group OK (/{DISCORD_GROUP_GLOBAL})')
 
-@group_singouin.command(
+@group_global.command(
     description='Display Public Cloud Project informations',
     default_permission=False,
     name='project',
@@ -260,7 +261,7 @@ async def project(
         logger.debug(f'[#{channel}][{name}] └──> Queries OK')
         return
 
-@group_singouin.command(
+@group_global.command(
     description='/ovh Commands related to OpenStack users',
     default_permission=False,
     name='user',
@@ -504,7 +505,7 @@ async def user(
         logger.debug(f'[#{channel}][{name}] └──> Queries OK')
         return
 
-@group_singouin.command(
+@group_global.command(
     description='/ovh Commands related to Project Vouchers',
     default_permission=False,
     name='voucher',
@@ -642,7 +643,7 @@ async def voucher(
     elif action == 'show':
         pass
 
-@group_singouin.command(
+@group_global.command(
     description='/ovh Commands related to Project Billing',
     default_permission=False,
     name='billing',

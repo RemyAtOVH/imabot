@@ -6,6 +6,7 @@ import os
 # Discord credentials
 DISCORD_GUILD = os.environ.get("DISCORD_GUILD", None)
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
+DISCORD_GROUP_GLOBAL = os.environ.get("DISCORD_GROUP_GLOBAL", 'iamabot')
 
 # Discord Roles
 ROLE_TECH_RO = os.environ.get("DISCORD_ROLE_TECH_RO", "Tech")
