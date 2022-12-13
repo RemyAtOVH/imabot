@@ -19,6 +19,7 @@ from variables import (
     DISCORD_GUILD,
     DISCORD_TOKEN,
     DISCORD_GROUP_GLOBAL,
+    DISCORD_GROUP_PCI,
     OVH_AK,
     OVH_AS,
     OVH_CK,
@@ -96,11 +97,11 @@ async def on_application_command_error(ctx, error):
         raise error
 
 #
-# /ovh Slash Commands
+# /{DISCORD_GROUP_GLOBAL} Slash Commands
 #
 try:
     group_global = bot.create_group(
-        description="Commands related to OVHcloud requests",
+        description="Commands related to Public Cloud requests",
         name=DISCORD_GROUP_GLOBAL,
         )
 except Exception as e:
@@ -109,6 +110,219 @@ else:
     logger.debug(f'Group OK (/{DISCORD_GROUP_GLOBAL})')
 
 @group_global.command(
+    description='Commands related to Project Billing',
+    default_permission=False,
+    name='billing',
+    )
+@commands.has_any_role(ROLE_ACCOUNTING)
+async def billing(
+    ctx,
+):
+    """This part performs actions on Public Cloud billing."""
+    # As we rely on potentially a lot of API calls, we need time to answer
+    await ctx.defer()
+    # Pre-flight checks
+    if ctx.channel.type is discord.ChannelType.private:
+        channel = ctx.channel.type
+    else:
+        channel = ctx.channel.name
+    name = ctx.author.name
+    logger.info(f'[#{channel}][{name}] /{DISCORD_GROUP_GLOBAL} billing')
+
+    try:
+        embed = discord.Embed(
+            title=f'**{my_nic}**',
+            colour=discord.Colour.green()
+            )
+
+        debts_id = ovh_client.get('/me/debtAccount/debt')
+        if len(debts_id) == 0:
+            # There is no Debt at all on the NIC
+            embed.add_field(
+                name='',
+                value='No Debt/Current billing',
+                inline=False,
+                )
+
+        for debt_id in debts_id:
+            # We start with the headers
+            embed_field_value_table = {
+                'Type': [],
+                'Description': [],
+                'Price': [],
+                }
+
+            # We locate the debt to have the initial orderId
+            debt = ovh_client.get(
+                f'/me/debtAccount/debt/{debt_id}'
+                )
+            order_id = debt['orderId']
+            # With the orderId, we grab the orderDetailIds
+            detailed_orders_id = ovh_client.get(
+                f'/me/order/{order_id}/details'
+                )
+
+            for detailed_order_id in detailed_orders_id:
+                # We loop over the detailed orders to grab the infos
+                detailed_order = ovh_client.get(
+                f'/me/order/{order_id}/details/{detailed_order_id}'
+                )
+                project_id = detailed_order['domain']
+                desc = textwrap.shorten(detailed_order['description'], width=27, placeholder="...")
+                embed_field_value_table['Type'].append(detailed_order['detailType'])
+                embed_field_value_table['Price'].append(detailed_order['totalPrice']['text'])
+                embed_field_value_table['Description'].append(desc)
+
+            embed.add_field(
+                name=f'Project ID: **{project_id}**\nOrder ID: **{order_id}**',
+                value=(
+                    '```' +
+                    tabulate(
+                        embed_field_value_table,
+                        headers='keys',
+                        tablefmt='pretty',
+                        stralign='right',
+                        ) +
+                    '```'
+                    ),
+                inline=False,
+                )
+
+            await ctx.interaction.edit_original_response(
+                embed=embed
+                )
+    except Exception as e:
+        msg = f'API calls KO [{e}]'
+        logger.error(msg)
+        embed = discord.Embed(
+            description=msg,
+            colour=discord.Colour.red()
+        )
+        await ctx.respond(embed=embed)
+        return
+    else:
+        logger.debug(f'[#{channel}][{name}] └──> Queries OK')
+        return
+
+@group_global.command(
+    description='Command to display Bot settings (API keys, roles, ...)',
+    default_permission=False,
+    name='settings',
+    )
+async def settings(
+    ctx,
+):
+    """This part performs checks and display info on bot config."""
+    # As we rely on potentially a lot of API calls, we need time to answer
+    await ctx.defer()
+    # Pre-flight checks
+    if ctx.channel.type is discord.ChannelType.private:
+        channel = ctx.channel.type
+    else:
+        channel = ctx.channel.name
+    name = ctx.author.name
+    logger.info(f'[#{channel}][{name}] /settings')
+
+    embed = discord.Embed(
+            title='**Bot settings**',
+            colour=discord.Colour.blue()
+            )
+
+    try:
+        # Lets check OVHcloud API credentials
+        if any([
+            OVH_ENDPOINT is None,
+            OVH_AK is None,
+            OVH_AS is None,
+            OVH_CK is None,
+        ]):
+            # At least one of the credentials info is missing
+            value_credentials=(
+                ':warning: '
+                'One of your OVHcloud API credentials is missing.\n'
+                'Check your ENV vars!'
+                )
+    except Exception as e:
+        msg = f'Credentials loading KO [{e}]'
+        logger.error(msg)
+        value_credentials=f':no_entry: {e}'
+    else:
+        # Everything is OK
+        value_credentials = (
+            ':white_check_mark: '
+            'Your OVHcloud API credentials are set up!'
+            )
+    embed.add_field(
+        name='Credentials',
+        value=value_credentials,
+        inline=False,
+        )
+
+    try:
+        # Lets check OVHcloud API connection status
+        ovh_client = ovh.Client(
+            endpoint=OVH_ENDPOINT,
+            application_key=OVH_AK,
+            application_secret=OVH_AS,
+            consumer_key=OVH_CK,
+            )
+        me = ovh_client.get('/me')
+        # At least one of the credentials info is missing
+        if me is None or me['nichandle'] is None:
+            value_auth=(
+                ':warning: '
+                'Authentication to OVHcloud API failed.\n'
+                'Check the validity of your credentials!'
+                )
+    except Exception as e:
+        msg = f'OVHcloud API calls KO [{e}]'
+        logger.error(msg)
+        value_auth=f':no_entry: {e}'
+    else:
+        # Everything is OK
+        value_auth = (
+            ':white_check_mark: '
+            "Authentication to OVHcloud API successfull! "
+            f"(**{me['nichandle']}**)"
+            )
+    embed.add_field(
+        name='Authentication',
+        value=value_auth,
+        inline=False,
+        )
+
+    try:
+        # We answer
+        await ctx.interaction.edit_original_response(
+            embed=embed
+            )
+    except Exception as e:
+        msg = f'API calls KO [{e}]'
+        logger.error(msg)
+        embed = discord.Embed(
+            description=msg,
+            colour=discord.Colour.red()
+        )
+        await ctx.respond(embed=embed)
+        return
+    else:
+        logger.debug(f'[#{channel}][{name}] └──> Queries OK')
+        return
+
+#
+# /{DISCORD_GROUP_PCI} Slash Commands
+#
+try:
+    group_pci = bot.create_group(
+        description="Commands related to Public Cloud requests",
+        name=DISCORD_GROUP_PCI,
+        )
+except Exception as e:
+    logger.error(f'Group KO (/{DISCORD_GROUP_PCI}) [{e}]')
+else:
+    logger.debug(f'Group OK (/{DISCORD_GROUP_PCI})')
+
+@group_pci.command(
     description='Display Public Cloud Project informations',
     default_permission=False,
     name='project',
@@ -149,7 +363,7 @@ async def project(
     else:
         channel = ctx.channel.name
     name = ctx.author.name
-    logger.info(f'[#{channel}][{name}] /ovh project {projectid}')
+    logger.info(f'[#{channel}][{name}] /{DISCORD_GROUP_PCI} project {projectid}')
 
     if action == 'list':
         try:
@@ -261,8 +475,8 @@ async def project(
         logger.debug(f'[#{channel}][{name}] └──> Queries OK')
         return
 
-@group_global.command(
-    description='/ovh Commands related to OpenStack users',
+@group_pci.command(
+    description='Commands related to OpenStack users',
     default_permission=False,
     name='user',
     )
@@ -312,7 +526,7 @@ async def user(
         channel = ctx.channel.name
     name = ctx.author.name
     logger.info(
-        f'[#{channel}][{name}] /ovh user '
+        f'[#{channel}][{name}] /{DISCORD_GROUP_PCI} user '
         f'{action} {projectid} {userid}'
         )
 
@@ -505,8 +719,8 @@ async def user(
         logger.debug(f'[#{channel}][{name}] └──> Queries OK')
         return
 
-@group_global.command(
-    description='/ovh Commands related to Project Vouchers',
+@group_pci.command(
+    description='Commands related to Project Vouchers',
     default_permission=False,
     name='voucher',
     )
@@ -554,7 +768,7 @@ async def voucher(
         channel = ctx.channel.name
     name = ctx.author.name
     logger.info(
-        f'[#{channel}][{name}] /ovh voucher '
+        f'[#{channel}][{name}] /{DISCORD_GROUP_PCI} voucher '
         f'{action} {projectid} {voucherid}'
         )
 
@@ -642,206 +856,6 @@ async def voucher(
             return
     elif action == 'show':
         pass
-
-@group_global.command(
-    description='/ovh Commands related to Project Billing',
-    default_permission=False,
-    name='billing',
-    )
-@commands.has_any_role(ROLE_ACCOUNTING)
-async def billing(
-    ctx,
-):
-    """This part performs actions on Public Cloud billing."""
-    # As we rely on potentially a lot of API calls, we need time to answer
-    await ctx.defer()
-    # Pre-flight checks
-    if ctx.channel.type is discord.ChannelType.private:
-        channel = ctx.channel.type
-    else:
-        channel = ctx.channel.name
-    name = ctx.author.name
-    logger.info(f'[#{channel}][{name}] /ovh billing')
-
-    try:
-        embed = discord.Embed(
-            title=f'**{my_nic}**',
-            colour=discord.Colour.green()
-            )
-
-        debts_id = ovh_client.get('/me/debtAccount/debt')
-        if len(debts_id) == 0:
-            # There is no Debt at all on the NIC
-            embed.add_field(
-                name='',
-                value='No Debt/Current billing',
-                inline=False,
-                )
-
-        for debt_id in debts_id:
-            # We start with the headers
-            embed_field_value_table = {
-                'Type': [],
-                'Description': [],
-                'Price': [],
-                }
-
-            # We locate the debt to have the initial orderId
-            debt = ovh_client.get(
-                f'/me/debtAccount/debt/{debt_id}'
-                )
-            order_id = debt['orderId']
-            # With the orderId, we grab the orderDetailIds
-            detailed_orders_id = ovh_client.get(
-                f'/me/order/{order_id}/details'
-                )
-
-            for detailed_order_id in detailed_orders_id:
-                # We loop over the detailed orders to grab the infos
-                detailed_order = ovh_client.get(
-                f'/me/order/{order_id}/details/{detailed_order_id}'
-                )
-                project_id = detailed_order['domain']
-                desc = textwrap.shorten(detailed_order['description'], width=27, placeholder="...")
-                embed_field_value_table['Type'].append(detailed_order['detailType'])
-                embed_field_value_table['Price'].append(detailed_order['totalPrice']['text'])
-                embed_field_value_table['Description'].append(desc)
-
-            embed.add_field(
-                name=f'Project ID: **{project_id}**\nOrder ID: **{order_id}**',
-                value=(
-                    '```' +
-                    tabulate(
-                        embed_field_value_table,
-                        headers='keys',
-                        tablefmt='pretty',
-                        stralign='right',
-                        ) +
-                    '```'
-                    ),
-                inline=False,
-                )
-
-            await ctx.interaction.edit_original_response(
-                embed=embed
-                )
-    except Exception as e:
-        msg = f'API calls KO [{e}]'
-        logger.error(msg)
-        embed = discord.Embed(
-            description=msg,
-            colour=discord.Colour.red()
-        )
-        await ctx.respond(embed=embed)
-        return
-    else:
-        logger.debug(f'[#{channel}][{name}] └──> Queries OK')
-        return
-
-@group_global.command(
-    description='Command to display Bot settings (API keys, roles, ...)',
-    default_permission=False,
-    name='settings',
-    )
-async def settings(
-    ctx,
-):
-    """This part performs checks and display info on bot config."""
-    # As we rely on potentially a lot of API calls, we need time to answer
-    await ctx.defer()
-    # Pre-flight checks
-    if ctx.channel.type is discord.ChannelType.private:
-        channel = ctx.channel.type
-    else:
-        channel = ctx.channel.name
-    name = ctx.author.name
-    logger.info(f'[#{channel}][{name}] /settings')
-
-    embed = discord.Embed(
-            title='**Bot settings**',
-            colour=discord.Colour.blue()
-            )
-
-    try:
-        # Lets check OVHcloud API credentials
-        if any([
-            OVH_ENDPOINT is None,
-            OVH_AK is None,
-            OVH_AS is None,
-            OVH_CK is None,
-        ]):
-            # At least one of the credentials info is missing
-            value_credentials=(
-                ':warning: '
-                'One of your OVHcloud API credentials is missing.\n'
-                'Check your ENV vars!'
-                )
-    except Exception as e:
-        msg = f'Credentials loading KO [{e}]'
-        logger.error(msg)
-        value_credentials=f':no_entry: {e}'
-    else:
-        # Everything is OK
-        value_credentials = (
-            ':white_check_mark: '
-            'Your OVHcloud API credentials are set up!'
-            )
-    embed.add_field(
-        name='Credentials',
-        value=value_credentials,
-        inline=False,
-        )
-
-    try:
-        # Lets check OVHcloud API connection status
-        ovh_client = ovh.Client(
-            endpoint=OVH_ENDPOINT,
-            application_key=OVH_AK,
-            application_secret=OVH_AS,
-            consumer_key=OVH_CK,
-            )
-        me = ovh_client.get('/me')
-        # At least one of the credentials info is missing
-        if me is None or me['nichandle'] is None:
-            value_auth=(
-                ':warning: '
-                'Unable to authenticate to OVHcloud API.\n'
-                'Check the validity of your credentials!'
-                )
-    except Exception as e:
-        msg = f'OVHcloud API calls KO [{e}]'
-        logger.error(msg)
-        value_auth=f':no_entry: {e}'
-    else:
-        # Everything is OK
-        value_auth = (
-            ':white_check_mark: '
-            "Authentication to OVHcloud API successfull! "
-            f"(**{me['nichandle']}**)"
-            )
-    embed.add_field(
-        name='Authentication',
-        value=value_auth,
-        inline=False,
-        )
-
-    try:
-        # We answer
-        await ctx.interaction.edit_original_response(
-            embed=embed
-            )
-    except Exception as e:
-        msg = f'API calls KO [{e}]'
-        logger.error(msg)
-        embed = discord.Embed(
-            description=msg,
-            colour=discord.Colour.red()
-        )
-        await ctx.respond(embed=embed)
-        return
-    else:
-        logger.debug(f'[#{channel}][{name}] └──> Queries OK')
-        return
 
 #
 # Run Discord bot
