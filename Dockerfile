@@ -1,4 +1,4 @@
-FROM alpine:3.15
+FROM alpine:3.17
 
 RUN adduser -h /code -u 1000 -D imabot
 COPY requirements.txt /requirements.txt
