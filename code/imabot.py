@@ -20,6 +20,8 @@ from variables import (
     DISCORD_TOKEN,
     DISCORD_GROUP_GLOBAL,
     DISCORD_GROUP_PCI,
+    FLAVOR_ID_DATA,
+    IMAGE_ID_DATA,
     OVH_AK,
     OVH_AS,
     OVH_CK,
@@ -30,10 +32,157 @@ from variables import (
 )
 
 from autocomplete import (
+    get_instance_list,
     get_project_list,
+    get_sshkey_list,
     get_user_list,
     get_voucher_list,
 )
+
+
+class InstanceCreationView(discord.ui.View):
+    """ Custom View to display Select dropdowns for Instance creation. """
+    def __init__(self, ctx, projectid, sshkeyid):
+        super().__init__(timeout=30)
+        self.values = {}
+        self.ctx = ctx
+        self.projectid = projectid
+        self.sshkeyid = sshkeyid
+
+    @discord.ui.select(
+        placeholder = "Choose the OpenStack region",
+        min_values = 1,
+        max_values = 1,
+        options = [
+            discord.SelectOption(label="🇫🇷 Gravelines (GRA9)", value="GRA9"),
+            discord.SelectOption(label="🇵🇱 Gravelines (WAW1)", value="WAW1"),
+            discord.SelectOption(label="🇬🇧 Gravelines (UK1)", value="UK1"),
+            discord.SelectOption(label="🇨🇦 Gravelines (BHS1)", value="BHS1"),
+        ]
+    )
+    async def select_callback_region(self, select, interaction):
+        """ Callback for region Select """
+        self.values['region'] = select.values[0]
+        select.disabled = True
+        await interaction.response.edit_message(view=self)
+
+    @discord.ui.select(
+        placeholder = "Choose the OpenStack flavor",
+        min_values = 1,
+        max_values = 1,
+        options = [
+            discord.SelectOption(label="⚙️ Discovery (1vCPU, 2Go RAM)", value="d2-2"),
+            discord.SelectOption(label="⚙️ Discovery (2vCPU, 4Go RAM)", value="d2-4"),
+            discord.SelectOption(label="⚙️ Discovery (4vCPU, 8Go RAM)", value="d2-8"),
+        ]
+    )
+    async def select_callback_flavor(self, select, interaction):
+        """ Callback for flavor Select """
+        self.values['flavor'] = select.values[0]
+        select.disabled = True
+        await interaction.response.edit_message(view=self)
+
+    @discord.ui.select(
+        placeholder = "Choose the OpenStack image",
+        min_values = 1,
+        max_values = 1,
+        options = [
+            discord.SelectOption(label="🐧 Debian 11", value="Debian 11"),
+            discord.SelectOption(label="🐧 Ubuntu 22.10", value="Ubuntu 22.10"),
+            discord.SelectOption(label="🐧 Fedora 36", value="Fedora 36"),
+        ]
+    )
+    async def select_callback_image(self, select, interaction):
+        """ Callback for image Select """
+        self.values['image'] = select.values[0]
+        select.disabled = True
+        await interaction.response.edit_message(view=self)
+
+    @discord.ui.button(
+        label="Let's go!",
+        style=discord.ButtonStyle.green,
+        emoji="✅",
+        )
+    async def button_callback_ok(self, button, interaction):
+        """ Callback for OK Button """
+
+        await interaction.response.defer()
+        answer = await interaction.followup.send(
+            embed=discord.Embed(
+                description="The Instance creation will start shortly",
+                colour=discord.Colour.green()
+                ),
+            )
+
+        if any([
+            'region' not in self.values,
+            'image' not in self.values,
+            'flavor' not in self.values,
+        ]):
+            msg = 'Unable to comply. Missing parameters from Select dropdowns'
+            logger.error(msg)
+            embed = discord.Embed(
+                description=msg,
+                colour=discord.Colour.red()
+            )
+            await answer.edit(embed=embed)
+            return
+
+        try:
+            image_id = IMAGE_ID_DATA[self.values['region']][self.values['image']]
+            flavor_id = FLAVOR_ID_DATA[self.values['region']][self.values['flavor']]
+        except Exception as e:
+            msg = f"Unable to comply. Can't find imageId/flavorId [{e}]"
+            logger.error(msg)
+            embed = discord.Embed(
+                description=msg,
+                colour=discord.Colour.red()
+            )
+            await answer.edit(embed=embed)
+            return
+
+        try:
+            res = ovh_client.post(
+                f'/cloud/project/{self.projectid}/instance',
+                flavorId=flavor_id,
+                imageId=image_id,
+                monthlyBilling=False,
+                name="d2-2-imabot",
+                region=self.values['region'],
+                sshKeyId=self.sshkeyid,
+            )
+        except Exception as e:
+            msg = f'API calls KO (Instance creation) [{e}]'
+            logger.error(msg)
+            embed = discord.Embed(
+                description=msg,
+                colour=discord.Colour.red()
+            )
+            await answer.edit(embed=embed)
+            return
+        else:
+            msg = 'API calls OK (Instance creation)'
+            logger.debug(msg)
+
+            embed = discord.Embed(
+                title="An Instance is spawning",
+                colour=discord.Colour.green()
+                )
+
+            embed_field_name = f"[{res['id']}] {res['name']}"
+            embed_field_value  = f"> Status : `{res['status']}`\n"
+            embed_field_value += f"> Region : `{res['region']}`\n"
+            embed_field_value += f"> OS : `{res['flavor']['osType']}`\n"
+            embed_field_value += f"> Flavor : `{res['flavor']['name']}`\n"
+
+            embed.add_field(
+                name=f'`{embed_field_name}`',
+                value=embed_field_value,
+                inline=True,
+                )
+            await answer.edit(embed=embed)
+            await self.ctx.delete()
+
 
 # Log Internal imports
 logger.info('Internal loading OK')
@@ -856,6 +1005,288 @@ async def voucher(
             return
     elif action == 'show':
         pass
+
+@group_pci.command(
+    description='Commands related to Project Instances',
+    default_permission=False,
+    name='instance',
+    )
+@option(
+    "action",
+    description="Instances action",
+    autocomplete=discord.utils.basic_autocomplete(
+        [
+            discord.OptionChoice("delete", value="delete"),
+            discord.OptionChoice("list", value="list"),
+            discord.OptionChoice("show", value="show"),
+            discord.OptionChoice("create", value="create"),
+            ]
+        )
+    )
+@option(
+    "projectid",
+    description="Project ID",
+    autocomplete=get_project_list,
+    required=True,
+    )
+@option(
+    "instanceid",
+    description="Instance ID",
+    autocomplete=get_instance_list,
+    required=False,
+    )
+@option(
+    "sshkeyid",
+    description="SSH Key ID",
+    autocomplete=get_sshkey_list,
+    required=False,
+    )
+async def instance(
+    ctx,
+    action: str,
+    projectid: str,
+    instanceid: str,
+    sshkeyid: str,
+):
+    """
+    This part performs actions on Public Cloud Instances
+    So far:
+    - list: Displays the list of ALL Instances
+    - show: Displays the details of a specific Instance
+    - delete: Deletes a specific Instance
+    - create: Creates a new Instance
+    """
+    # As we rely on potentially a lot of API calls, we need time to answer
+    await ctx.defer()
+    # Pre-flight checks
+    if ctx.channel.type is discord.ChannelType.private:
+        channel = ctx.channel.type
+    else:
+        channel = ctx.channel.name
+    name = ctx.author.name
+    logger.info(
+        f'[#{channel}][{name}] /{DISCORD_GROUP_PCI} instance '
+        f'{action} {projectid} {instanceid}'
+        )
+
+    if action == 'list':
+        try:
+            embed = discord.Embed(
+                title=f'**{my_nic}**',
+                colour=discord.Colour.green()
+                )
+            # We start with the headers
+            embed_field_value_table = {
+                'Instance Name': [],
+                'Region': [],
+                'Flavor': [],
+            }
+
+            project = ovh_client.get(f'/cloud/project/{projectid}')
+            if project['status'] == 'suspended':
+                # Suspended Projects cannot be queried later
+                embed.add_field(
+                    name=f'Project ID: **{projectid}**',
+                    value='(Suspended)',
+                    inline=False,
+                    )
+
+            instances = ovh_client.get(
+                f'/cloud/project/{projectid}/instance'
+                )
+            if len(instances) == 0:
+                # There is no Instances in the Project
+                embed.add_field(
+                    name=f'Project ID: **{projectid}**',
+                    value='No Instances',
+                    inline=False,
+                    )
+
+            for instance in instances:
+                # We loop over the instances to grab their names
+                if 'nodepool' in instance['name']:
+                    # We want to exclude K8s nodepool nodes
+                    # Too much trouble if someone mistakenly kills one
+                    continue
+
+                embed_field_value_table['Instance Name'].append(instance['name'])
+                embed_field_value_table['Region'].append(instance['region'])
+                embed_field_value_table['Flavor'].append(instance['planCode'].split('.')[0])
+
+            embed.add_field(
+                name=f'Project ID: **{projectid}**',
+                value=(
+                    '```' +
+                    tabulate(
+                        embed_field_value_table,
+                        headers='keys',
+                        tablefmt='pretty',
+                        stralign='right',
+                        ) +
+                    '```'
+                    ),
+                inline=False,
+                )
+
+            await ctx.interaction.edit_original_response(
+                embed=embed
+                )
+
+        except Exception as e:
+            msg = f'API calls KO [{e}]'
+            logger.error(msg)
+            embed = discord.Embed(
+                description=msg,
+                colour=discord.Colour.red()
+            )
+            await ctx.respond(embed=embed)
+            return
+        else:
+            logger.debug(f'[#{channel}][{name}] └──> Queries OK')
+            return
+    elif action == 'show':
+        if projectid is None or instanceid is None:
+            logger.error('Missing mandatory option(s)')
+            msg = (
+                'Check that you provided all variables: \n'
+                ' - `projectid` \n'
+                ' - `instanceid` \n'
+                )
+            embed = discord.Embed(
+                description=msg,
+                colour=discord.Colour.red()
+            )
+            await ctx.respond(embed=embed)
+            return
+
+        try:
+            instance = ovh_client.get(
+                f'/cloud/project/{projectid}/instance/{instanceid}'
+                )
+        except Exception as e:
+            msg = f'API calls KO [{e}]'
+            logger.error(msg)
+            embed = discord.Embed(
+                description=msg,
+                colour=discord.Colour.red()
+            )
+            await ctx.respond(embed=embed)
+            return
+        else:
+            embed = discord.Embed(
+                description=(
+                    f'```json\n'
+                    f'{json.dumps(instance, indent=4)}'
+                    f'\n```'
+                    ),
+                colour=discord.Colour.green()
+            )
+            await ctx.respond(embed=embed)
+
+        logger.debug(f'[#{channel}][{name}] └──> Queries OK')
+        return
+    elif action == 'delete':
+        # Here for this one, we need more elevated role - TECH_RW
+        # Pre-flight checks : Roles
+        role_rw = discord.utils.get(ctx.author.guild.roles, name=ROLE_TECH_RW)
+        if role_rw not in ctx.author.roles:
+            msg = (
+                f'[#{channel}][{name}]  └──> Missing required role (@{ROLE_TECH_RW})'
+                )
+            logger.warning(msg)
+            embed = discord.Embed(
+                description=(
+                    f"You don't have the role requested for this operation (@{ROLE_TECH_RW})"
+                    ),
+                colour=discord.Colour.orange()
+            )
+            await ctx.respond(embed=embed)
+            return
+
+        if projectid is None or instanceid is None:
+            logger.error('Missing mandatory option(s)')
+            msg = (
+                'Check that you provided all variables: \n'
+                ' - `projectid` \n'
+                ' - `instanceid` \n'
+                )
+            embed = discord.Embed(
+                description=msg,
+                colour=discord.Colour.red()
+            )
+            await ctx.respond(embed=embed)
+            return
+
+        try:
+            instance = ovh_client.get(
+                f'/cloud/project/{projectid}/instance/{instanceid}'
+                )
+            ovh_client.delete(
+                f'/cloud/project/{projectid}/instance/{instanceid}'
+                )
+        except Exception as e:
+            msg = f'API calls KO [{e}]'
+            logger.error(msg)
+            embed = discord.Embed(
+                description=msg,
+                colour=discord.Colour.red()
+            )
+            await ctx.respond(embed=embed)
+            return
+        else:
+            embed = discord.Embed(
+                title=f'**{my_nic}**',
+                description=(
+                    f"The Public Cloud Instance "
+                    f"`{instance['name']}` in {instance['region']} "
+                    f"was deleted"
+                    ),
+                colour=discord.Colour.green()
+            )
+            embed.set_footer(text=f"Project ID: {projectid}")
+
+            await ctx.respond(embed=embed)
+
+        logger.debug(f'[#{channel}][{name}] └──> Queries OK')
+        return
+    elif action == 'create':
+        if projectid is None or sshkeyid is None:
+            logger.error('Missing mandatory option(s)')
+            msg = (
+                'Check that you provided all variables: \n'
+                ' - `projectid` \n'
+                ' - `sshkeyid` \n'
+                )
+            embed = discord.Embed(
+                description=msg,
+                colour=discord.Colour.red()
+            )
+            await ctx.respond(embed=embed)
+            return
+
+        try:
+            await ctx.respond(
+                "Give me some parameters to fullfill this action:",
+                view=InstanceCreationView(ctx, projectid, sshkeyid),
+                ephemeral=True,
+                )
+        except Exception as e:
+            msg = f'Command aborted: Instance creation KO [{e}]'
+            logger.error(msg)
+            embed = discord.Embed(
+                description=msg,
+                colour=discord.Colour.red()
+            )
+            await ctx.respond(embed=embed)
+            return
+        else:
+            logger.info('Command successfull: Instance creation OK')
+            return
+
+
+
+
+
 
 #
 # Run Discord bot

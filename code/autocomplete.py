@@ -14,8 +14,80 @@ from variables import (
     OVH_ENDPOINT,
 )
 
+async def get_instance_list(ctx: discord.AutocompleteContext):
+    """ Function to build and serve an Autocomplete list of Project Instances. """
+    instance_list = []
+
+    if ctx.options["projectid"] is None:
+        return instance_list
+
+    try:
+        ovh_client = ovh.Client(
+            endpoint=OVH_ENDPOINT,
+            application_key=OVH_AK,
+            application_secret=OVH_AS,
+            consumer_key=OVH_CK,
+            )
+
+        instances = ovh_client.get(
+            f'/cloud/project/{ctx.options["projectid"]}/instance'
+            )
+    except Exception as e:
+        logger.error(f'Autocomplete generation KO [{e}]')
+        return []
+    else:
+        if instances is None or len(instances) == 0:
+            return []
+        else:
+            for instance in instances:
+                if 'nodepool' in instance['name']:
+                    # We want to exclude K8s nodepool nodes
+                    # Too much trouble if someone mistakenly kills one
+                    continue
+
+                instance_list.append(
+                discord.OptionChoice(
+                    f"⚙️ {instance['name']} ({instance['id']})",
+                    value=instance['id'],
+                    )
+                )
+            return instance_list
+
+
+async def get_sshkey_list(ctx: discord.AutocompleteContext):
+    """ Function to build and serve an Autocomplete list of SSH Keys. """
+    sshkey_list = []
+
+    if ctx.options["projectid"] is None:
+        return sshkey_list
+
+    try:
+        ovh_client = ovh.Client(
+            endpoint=OVH_ENDPOINT,
+            application_key=OVH_AK,
+            application_secret=OVH_AS,
+            consumer_key=OVH_CK,
+            )
+
+        sshkeys = ovh_client.get(
+            f'/cloud/project/{ctx.options["projectid"]}/sshkey'
+            )
+    except Exception as e:
+        logger.error(f'Autocomplete generation KO [{e}]')
+        return []
+    else:
+        if sshkeys is None or len(sshkeys) == 0:
+            return sshkey_list
+        else:
+            for sshkey in sshkeys:
+                sshkey_list.append(
+                    discord.OptionChoice(f"🔐 {sshkey['name']}", value=f"{sshkey['id']}")
+                    )
+            return sshkey_list
+
+
 async def get_project_list(ctx: discord.AutocompleteContext):
-    """Function to build and serve an Autocomplete list of Projects."""
+    """ Function to build and serve an Autocomplete list of Projects. """
     try:
         ovh_client = ovh.Client(
             endpoint=OVH_ENDPOINT,
@@ -35,16 +107,13 @@ async def get_project_list(ctx: discord.AutocompleteContext):
         project_list = []
         for project_id in projects_id:
             project_list.append(
-                discord.OptionChoice(
-                    project_id,
-                    value=project_id,
-                    )
+                discord.OptionChoice(f"📂 {project_id}", value=project_id)
                 )
 
         return project_list
 
 async def get_user_list(ctx: discord.AutocompleteContext):
-    """Function to build and serve an Autocomplete list of Users."""
+    """ Function to build and serve an Autocomplete list of Users. """
     try:
         ovh_client = ovh.Client(
             endpoint=OVH_ENDPOINT,
@@ -67,7 +136,7 @@ async def get_user_list(ctx: discord.AutocompleteContext):
         for user in users:
             user_list.append(
                 discord.OptionChoice(
-                    f"{user['username']} ({user['description']})",
+                    f"👤 {user['description']} ({user['username']})",
                     value=f"{user['id']}",
                     )
                 )
@@ -75,7 +144,7 @@ async def get_user_list(ctx: discord.AutocompleteContext):
         return user_list
 
 async def get_voucher_list(ctx: discord.AutocompleteContext):
-    """Function to build and serve an Autocomplete list of Vouchers."""
+    """ Function to build and serve an Autocomplete list of Vouchers. """
     try:
         ovh_client = ovh.Client(
             endpoint=OVH_ENDPOINT,
@@ -101,7 +170,7 @@ async def get_voucher_list(ctx: discord.AutocompleteContext):
                     )
                 voucher_list.append(
                     discord.OptionChoice(
-                        f"{credit['id']} ({credit['voucher']})",
+                        f"💳 {credit['id']} ({credit['voucher']})",
                         value=f"{credit['id']}",
                         )
                     )
