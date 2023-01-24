@@ -5,6 +5,7 @@ COPY requirements.txt /requirements.txt
 
 WORKDIR /code
 ENV PATH="/code/.local/bin:${PATH}"
+ENV TZ=Europe/Paris
 
 RUN apk update --no-cache \
     && apk add --no-cache python3=~3.9 \
