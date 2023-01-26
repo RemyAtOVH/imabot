@@ -385,7 +385,7 @@ async def billing(
                 )
             debt_counter += 1
             await ctx.interaction.edit_original_response(embed=embed)
-        
+
         # There was debts, but not showned due to limiting
         if debt_counter == 0:
             embed.add_field(
@@ -735,6 +735,7 @@ async def user(
         )
 
     if action == 'list':
+        # This command will require basic TECH_RO role, checked before
         try:
             projects = ovh_client.get('/cloud/project')
         except Exception as e:
@@ -818,6 +819,7 @@ async def user(
             logger.debug(f'[#{channel}][{name}] └──> Queries OK')
             return
     elif action == 'show':
+        # This command will require basic TECH_RO role, checked before
         if projectid is None or userid is None:
             logger.error('Missing mandatory option(s)')
             msg = (
@@ -1066,6 +1068,7 @@ async def voucher(
     default_permission=False,
     name='instance',
     )
+@commands.has_any_role(ROLE_TECH_RO)
 @option(
     "action",
     description="Instances action",
@@ -1125,6 +1128,7 @@ async def instance(
         )
 
     if action == 'list':
+        # This command will require basic TECH_RO role, checked before
         try:
             embed = discord.Embed(
                 title=f'**{my_nic}**',
@@ -1200,6 +1204,7 @@ async def instance(
             logger.debug(f'[#{channel}][{name}] └──> Queries OK')
             return
     elif action == 'show':
+        # This command will require basic TECH_RO role, checked before
         if projectid is None or instanceid is None:
             logger.error('Missing mandatory option(s)')
             msg = (
@@ -1305,6 +1310,23 @@ async def instance(
         logger.debug(f'[#{channel}][{name}] └──> Queries OK')
         return
     elif action == 'create':
+        # Here for this one, we need more elevated role - TECH_RW
+        # Pre-flight checks : Roles
+        role_rw = discord.utils.get(ctx.author.guild.roles, name=ROLE_TECH_RW)
+        if role_rw not in ctx.author.roles:
+            msg = (
+                f'[#{channel}][{name}]  └──> Missing required role (@{ROLE_TECH_RW})'
+                )
+            logger.warning(msg)
+            embed = discord.Embed(
+                description=(
+                    f"You don't have the role requested for this operation (@{ROLE_TECH_RW})"
+                    ),
+                colour=discord.Colour.orange()
+            )
+            await ctx.respond(embed=embed)
+            return
+
         if projectid is None or sshkeyid is None:
             logger.error('Missing mandatory option(s)')
             msg = (
@@ -1337,10 +1359,6 @@ async def instance(
         else:
             logger.info('Command successfull: Instance creation OK')
             return
-
-
-
-
 
 
 #
