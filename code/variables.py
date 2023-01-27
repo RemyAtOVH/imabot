@@ -8,6 +8,7 @@ DISCORD_GUILD = os.environ.get("DISCORD_GUILD", None)
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
 DISCORD_GROUP_GLOBAL = os.environ.get("DISCORD_GROUP_GLOBAL", 'iamabot')
 DISCORD_GROUP_PCI = os.environ.get("DISCORD_GROUP_PCI", 'public-cloud')
+DISCORD_GROUP_PCC = os.environ.get("DISCORD_GROUP_PCC", 'hosted-private-cloud')
 
 # Discord Roles
 ROLE_TECH_RO = os.environ.get("DISCORD_ROLE_TECH_RO", "Tech")
