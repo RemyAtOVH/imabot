@@ -1015,9 +1015,13 @@ async def instance(
                     value='No Instances',
                     inline=False,
                     )
+                await ctx.interaction.edit_original_response(
+                embed=embed
+                )
+                return
 
+            # We loop over the instances to grab their names
             for instance in instances:
-                # We loop over the instances to grab their names
                 if 'nodepool' in instance['name']:
                     # We want to exclude K8s nodepool nodes
                     # Too much trouble if someone mistakenly kills one
