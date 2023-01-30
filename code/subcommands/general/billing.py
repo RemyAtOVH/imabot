@@ -1,24 +1,27 @@
 """
-Discord ommand definition for:
-/{DISCORD_GROUP_GENERAL} billing
+Discord command definition for /{DISCORD_GROUP_GENERAL} billing
 """
-import os
-import textwrap
 import datetime
+import textwrap
 
 import discord
 import pytz
 
 from discord.commands import option
 from discord.ext import commands
-
 from loguru import logger
 from tabulate import tabulate
 
-DISCORD_GROUP_GENERAL = os.environ.get("DISCORD_GROUP_GENERAL", 'iamabot')
-ROLE_ACCOUNTING = os.environ.get("DISCORD_ROLE_ACCOUNTING", "Accounting")
+from variables import (
+    DISCORD_GROUP_GENERAL,
+    ROLE_ACCOUNTING,
+)
+
 
 def billing(group_global, ovh_client, my_nic):
+    """
+    Discord command definition for /{DISCORD_GROUP_GENERAL} billing
+    """
     @group_global.command(
     description='Commands related to Project Billing',
     default_permission=False,

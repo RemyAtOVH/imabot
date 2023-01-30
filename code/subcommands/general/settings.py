@@ -1,6 +1,5 @@
 """
-Discord ommand definition for:
-/{DISCORD_GROUP_GENERAL} settings
+Discord command definition for /{DISCORD_GROUP_GENERAL} settings
 """
 import os
 
@@ -9,19 +8,20 @@ import ovh
 
 from loguru import logger
 
-# OVHcloud API credentials
-# You can generate them here: https://api.ovh.com/createToken/
-# DO NOT HARDCODE THEM HERE !
-# They are meant to be passed as ENV vars (secrets) to ensure your safety.
-OVH_ENDPOINT = os.environ.get("OVH_ENDPOINT", 'ovh-eu')
-OVH_AK = os.environ.get("OVH_APPLICATION_KEY")
-OVH_AS = os.environ.get("OVH_APPLICATION_SECRET")
-OVH_CK = os.environ.get("OVH_CONSUMER_KEY")
+from variables import (
+    DISCORD_GROUP_GENERAL,
+    OVH_AK,
+    OVH_AS,
+    OVH_CK,
+    OVH_ENDPOINT,
+    ROLE_ACCOUNTING,
+)
 
-DISCORD_GROUP_GENERAL = os.environ.get("DISCORD_GROUP_GENERAL", 'iamabot')
-ROLE_ACCOUNTING = os.environ.get("DISCORD_ROLE_ACCOUNTING", "Accounting")
 
 def settings(group_global):
+    """
+    Discord command definition for /{DISCORD_GROUP_GENERAL} settings
+    """
     @group_global.command(
         description='Command to display Bot settings (API keys, roles, ...)',
         default_permission=False,
@@ -39,7 +39,7 @@ def settings(group_global):
         else:
             channel = ctx.channel.name
         name = ctx.author.name
-        logger.info(f'[#{channel}][{name}] /settings')
+        logger.info(f'[#{channel}][{name}] /{DISCORD_GROUP_GENERAL} settings')
 
         embed = discord.Embed(
                 title='**Bot settings**',
