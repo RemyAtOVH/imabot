@@ -20,6 +20,8 @@ RUN apk update --no-cache \
     && rm /requirements.txt
 
 USER imabot
-COPY code/* /code/
+COPY code/imabot.py /code/
+COPY code/subcommands /code/subcommands
+COPY code/variables.py /code/
 
 ENTRYPOINT ["/code/imabot.py"]
