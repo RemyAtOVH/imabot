@@ -9,6 +9,7 @@ from loguru import logger
 from variables import (
     FLAVOR_ID_DATA,
     IMAGE_ID_DATA,
+    USER_DATA_WITH_ANSIBLE,
 )
 
 
@@ -123,6 +124,7 @@ class InstanceCreationView(discord.ui.View):
                 name="d2-2-imabot",
                 region=self.values['region'],
                 sshKeyId=self.sshkeyid,
+                userData=USER_DATA_WITH_ANSIBLE,
             )
         except Exception as e:
             msg = f'API calls KO (Instance creation) [{e}]'

@@ -2,10 +2,15 @@
 
 """ Module to get ENV vars. """
 import os
+import subprocess
+
+# Ansible parameters
+ANSIBLE_HOSTS_FILE = os.environ.get("ANSIBLE_HOSTS_FILE", '/code/hosts')
 
 # Discord credentials
 DISCORD_GUILD = os.environ.get("DISCORD_GUILD", None)
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
+DISCORD_GROUP_ANSIBLE = os.environ.get("DISCORD_GROUP_ANSIBLE", 'ansible')
 DISCORD_GROUP_GENERAL = os.environ.get("DISCORD_GROUP_GENERAL", 'iamabot')
 DISCORD_GROUP_PCI = os.environ.get("DISCORD_GROUP_PCI", 'public-cloud')
 DISCORD_GROUP_PCC = os.environ.get("DISCORD_GROUP_PCC", 'hosted-private-cloud')
@@ -72,3 +77,34 @@ FLAVOR_ID_DATA = {
         "d2-8": "2f4d65be-f405-4d28-962c-a233e1a02cba",
         },
     }
+
+# We setup some variables for Ansible deployments
+SSHKEY_FILE = 'code/id_rsa'
+SSHKEY_FILE_PUB = 'code/id_rsa.pub'
+if os.path.isfile(SSHKEY_FILE_PUB):
+    with open(SSHKEY_FILE_PUB, "r", encoding='utf8') as rsafile:
+        LOCAL_SSH_KEY = rsafile.read()
+else:
+    res = subprocess.run(
+        [
+            "ssh-keygen",
+            f"-f{SSHKEY_FILE}",
+            "-N''",
+            ],
+        capture_output=True,
+        )
+    with open(SSHKEY_FILE_PUB, "r", encoding='utf8') as rsafile:
+        LOCAL_SSH_KEY = rsafile.read()
+
+
+USER_DATA_WITH_ANSIBLE=f"""#cloud-config
+
+users:
+  - default
+  - name: ansible
+    groups: sudo
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    lock-passwd: true
+    ssh-authorized-keys:
+        {LOCAL_SSH_KEY}"""

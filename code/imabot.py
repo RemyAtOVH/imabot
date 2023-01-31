@@ -11,6 +11,7 @@ from loguru import logger
 from variables import (
     DISCORD_GUILD,
     DISCORD_TOKEN,
+    DISCORD_GROUP_ANSIBLE,
     DISCORD_GROUP_GENERAL,
     DISCORD_GROUP_PCI,
     DISCORD_GROUP_PCC,
@@ -21,6 +22,7 @@ from variables import (
 )
 
 from subcommands import (
+    ansible,
     general,
     public_cloud,
     private_cloud,
@@ -139,6 +141,23 @@ private_cloud.infrastructure(group_hpc, ovh_client, my_nic)
 private_cloud.filer(group_hpc, ovh_client, my_nic)
 private_cloud.user(group_hpc, ovh_client, my_nic)
 private_cloud.vm(group_hpc, ovh_client, my_nic)
+
+
+#
+# /{DISCORD_GROUP_ANSIBLE} Slash Commands
+#
+try:
+    group_ansible = bot.create_group(
+        description="Commands related to Ansible actions",
+        name=DISCORD_GROUP_ANSIBLE,
+        )
+except Exception as e:
+    logger.error(f'Group KO (/{DISCORD_GROUP_ANSIBLE}) [{e}]')
+else:
+    logger.debug(f'Group OK (/{DISCORD_GROUP_ANSIBLE})')
+
+ansible.hosts(group_ansible)
+
 
 #
 # Run Discord bot
