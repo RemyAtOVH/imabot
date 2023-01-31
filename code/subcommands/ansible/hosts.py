@@ -118,15 +118,15 @@ def hosts(group_ansible):
                 await ctx.respond(embed=embed)
                 return
 
-            if not os.path.isfile(ANSIBLE_HOSTS_FILE):
-                command = "x"
-            else:
-                command = "w"
-
             try:
                 config = configparser.ConfigParser(allow_no_value=True)
-                # We load
-                config.read_file(open(ANSIBLE_HOSTS_FILE, 'r', encoding='utf8'))
+                # We check if file exists
+                if not os.path.isfile(ANSIBLE_HOSTS_FILE):
+                    command = "x"
+                else:
+                    command = "w"
+                    # We load
+                    config.read_file(open(ANSIBLE_HOSTS_FILE, 'r', encoding='utf8'))
                 # We add the section if not exists
                 if not config.has_section(section):
                     config.add_section(section)
