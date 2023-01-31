@@ -20,8 +20,9 @@ RUN apk update --no-cache \
     && rm /requirements.txt
 
 USER imabot
-COPY code/imabot.py /code/
-COPY code/subcommands /code/subcommands
-COPY code/variables.py /code/
+COPY --chown=imabot:imabot code/ansible      /code/ansible
+COPY --chown=imabot:imabot code/imabot.py    /code/
+COPY --chown=imabot:imabot code/subcommands  /code/subcommands
+COPY --chown=imabot:imabot code/variables.py /code/
 
 ENTRYPOINT ["/code/imabot.py"]
