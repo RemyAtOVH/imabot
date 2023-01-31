@@ -133,3 +133,5 @@ dmypy.json
 
 # Ignored files (Development specific)
 *.development.yml
+hosts
+id_rsa*
