@@ -10,6 +10,7 @@ ENV TZ=Europe/Paris
 RUN apk update --no-cache \
     && apk add --no-cache python3=~3.9 \
                           tzdata=~2022 \
+                          ansible=~4.8 \
     && apk add --no-cache --virtual .build-deps \
                                     gcc=~10.3 \
                                     libc-dev=~0.7 \
