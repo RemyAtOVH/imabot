@@ -1,0 +1,15 @@
+---
+- name: Playtest to check Ansible package presence
+  hosts: all
+  become: true
+  tasks:
+    - name: Ensure ansible pkg presence (Debian-like)
+      ansible.builtin.apt:
+        name: ansible
+        state: present
+      when: ansible_facts['os_family'] == "Debian"
+    - name: Ensure ansible pkg presence (RedHat-like)
+      ansible.builtin.yum:
+        name: ansible
+        state: present
+      when: ansible_facts['os_family'] == "RedHat"

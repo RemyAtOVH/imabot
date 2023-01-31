@@ -157,6 +157,7 @@ else:
     logger.debug(f'Group OK (/{DISCORD_GROUP_ANSIBLE})')
 
 ansible.hosts(group_ansible)
+ansible.playbook(group_ansible)
 
 
 #

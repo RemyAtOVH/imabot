@@ -13,3 +13,4 @@ services:
       DISCORD_ROLE_TECH_RO: 'Tech'
       DISCORD_ROLE_TECH_RW: 'Tech Lead'
       DISCORD_ROLE_ACCOUNTING: 'Accounting'
+      ANSIBLE_HOST_KEY_CHECKING: 'False'

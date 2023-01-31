@@ -6,6 +6,7 @@ import subprocess
 
 # Ansible parameters
 ANSIBLE_HOSTS_FILE = os.environ.get("ANSIBLE_HOSTS_FILE", '/code/hosts')
+ANSIBLE_PLAYBOOK_FOLDER = os.environ.get("ANSIBLE_PLAYBOOK_FOLDER", '/code/playbooks')
 
 # Discord credentials
 DISCORD_GUILD = os.environ.get("DISCORD_GUILD", None)
@@ -89,9 +90,10 @@ else:
         [
             "ssh-keygen",
             f"-f{SSHKEY_FILE}",
-            "-N''",
+            '-N ""',
             ],
         capture_output=True,
+        check=True,
         )
     with open(SSHKEY_FILE_PUB, "r", encoding='utf8') as rsafile:
         LOCAL_SSH_KEY = rsafile.read()

@@ -102,6 +102,7 @@ def hosts(group_ansible):
                 )
             hostsfile.close()
             await ctx.respond(embed=embed)
+            logger.debug(f'[#{channel}][{name}] └──> Queries OK')
         elif action == 'assign':
             if section is None or host is None:
                 logger.error('Missing mandatory option(s)')
@@ -148,6 +149,7 @@ def hosts(group_ansible):
                     colour=discord.Colour.green()
                 )
                 await ctx.respond(embed=embed)
+                logger.debug(f'[#{channel}][{name}] └──> Queries OK')
         elif action == 'remove':
             if section is None or host is None:
                 logger.error('Missing mandatory option(s)')
@@ -207,6 +209,7 @@ def hosts(group_ansible):
                     colour=discord.Colour.green()
                 )
                 await ctx.respond(embed=embed)
+                logger.debug(f'[#{channel}][{name}] └──> Queries OK')
         elif action == 'graph':
             try:
                 res = subprocess.run(
@@ -237,6 +240,7 @@ def hosts(group_ansible):
                     colour=discord.Colour.green()
                 )
                 await ctx.respond(embed=embed)
+                logger.debug(f'[#{channel}][{name}] └──> Queries OK')
         elif action == 'ping':
             try:
                 res = subprocess.run(
@@ -269,3 +273,4 @@ def hosts(group_ansible):
                     colour=discord.Colour.green()
                 )
                 await ctx.respond(embed=embed)
+                logger.debug(f'[#{channel}][{name}] └──> Queries OK')
