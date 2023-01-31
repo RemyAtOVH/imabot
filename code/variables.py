@@ -5,8 +5,9 @@ import os
 import subprocess
 
 # Ansible parameters
-ANSIBLE_HOSTS_FILE = os.environ.get("ANSIBLE_HOSTS_FILE", '/code/hosts')
-ANSIBLE_PLAYBOOK_FOLDER = os.environ.get("ANSIBLE_PLAYBOOK_FOLDER", '/code/playbooks')
+ANSIBLE_HOSTS_FILE = os.environ.get("ANSIBLE_HOSTS_FILE", '/code/ansible/hosts')
+ANSIBLE_PLAYBOOK_FOLDER = os.environ.get("ANSIBLE_PLAYBOOK_FOLDER", '/code/ansible/playbooks')
+ANSIBLE_SSHKEY_FOLDER = os.environ.get("ANSIBLE_SSHKEY_FOLDER", '/code/ansible/ssh')
 
 # Discord credentials
 DISCORD_GUILD = os.environ.get("DISCORD_GUILD", None)
@@ -80,8 +81,9 @@ FLAVOR_ID_DATA = {
     }
 
 # We setup some variables for Ansible deployments
-SSHKEY_FILE = 'code/id_rsa'
-SSHKEY_FILE_PUB = 'code/id_rsa.pub'
+SSHKEY_FILE = f'{ANSIBLE_SSHKEY_FOLDER}/id_rsa'
+SSHKEY_FILE_PUB = f'{ANSIBLE_SSHKEY_FOLDER}/id_rsa.pub'
+
 if os.path.isfile(SSHKEY_FILE_PUB):
     with open(SSHKEY_FILE_PUB, "r", encoding='utf8') as rsafile:
         LOCAL_SSH_KEY = rsafile.read()
