@@ -215,7 +215,8 @@ def hosts(group_ansible):
                         f"--inventory-file={ANSIBLE_HOSTS_FILE}",
                         "--graph"
                         ],
-                    capture_output=True
+                    capture_output=True,
+                    check=True
                     )
             except Exception as e:
                 msg = f'Host remove KO [{e}]'
@@ -247,6 +248,7 @@ def hosts(group_ansible):
                         "--user=ansible",
                         ],
                     capture_output=True,
+                    check=True,
                     )
             except Exception as e:
                 msg = f'Host remove KO [{e}]'
