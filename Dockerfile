@@ -9,6 +9,8 @@ ENV TZ=Europe/Paris
 
 RUN apk update --no-cache \
     && apk add --no-cache python3=~3.9 \
+                          iputils=~20210722 \
+                          openssh=~8.8 \
                           openssh-keygen=~8.8 \
                           tzdata=~2022 \
                           ansible=~4.8 \
