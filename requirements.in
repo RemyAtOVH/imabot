@@ -1,4 +1,4 @@
-loguru ~= 0.6
+loguru ~= 0.7
 ovh == 1.0.0
 py-cord ~= 2.3
 pytz ~= 2022.6
